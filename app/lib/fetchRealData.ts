@@ -132,7 +132,7 @@ async function fetchAllCharts(): Promise<Map<string, ChartData>> {
 /**
  * Fetch real commodity prices from Yahoo Finance.
  * Returns an array of PriceData with real market data, or null if fetching fails.
- * Commodities without Yahoo Finance data (ZN, NI) will be null in the result map.
+ * Only commodities with Yahoo Finance symbols will have data returned.
  */
 export async function fetchRealPrices(): Promise<{ prices: PriceData[]; source: 'live' | 'cached' } | null> {
   // Check cache first
@@ -177,7 +177,6 @@ function buildPriceData(chartData: Map<string, ChartData>): PriceData[] {
       const changePercent = chart.previousClose !== 0
         ? (change / chart.previousClose) * 100
         : 0;
-      const spread = chart.price * 0.0003;
 
       results.push({
         symbol: c.symbol,
@@ -191,26 +190,16 @@ function buildPriceData(chartData: Map<string, ChartData>): PriceData[] {
         high: Number(chart.high.toFixed(c.decimals)),
         low: Number(chart.low.toFixed(c.decimals)),
         open: Number(chart.open.toFixed(c.decimals)),
-        bid: Number((chart.price - spread).toFixed(c.decimals)),
-        ask: Number((chart.price + spread).toFixed(c.decimals)),
+        bid: null,
+        ask: null,
         volume: formatVolume(chart.volume),
         timestamp: new Date().toISOString(),
         decimals: c.decimals,
         sparkline: chart.sparkline.map(v => Number(v.toFixed(c.decimals))),
       });
     }
-    // Skip commodities without data — caller merges with simulation
+    // Skip commodities without Yahoo Finance data
   }
 
   return results;
-}
-
-/**
- * Get the real spot price for a commodity (used by futures curve generation).
- * Returns null if not available.
- */
-export function getCachedSpotPrice(symbol: string): number | null {
-  if (!priceCache) return null;
-  const chart = priceCache.data.get(symbol);
-  return chart ? chart.price : null;
 }
