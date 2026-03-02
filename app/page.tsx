@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useCommodityData } from '@/app/hooks/useCommodityData';
 import { PriceCard, PriceTable } from '@/app/components/PriceCard';
-import { SpreadsPanel } from '@/app/components/Panels';
+import { SpreadsPanel, NewsPanel, MacroIndicatorsPanel, UpcomingEventsPanel } from '@/app/components/Panels';
 import { WorldMarketClock } from '@/app/components/WorldMarketClock';
 import { Heatmap, MiniHeatmap } from '@/app/components/Heatmap';
+import { CorrelationMatrix } from '@/app/components/CorrelationMatrix';
+import { PriceChartModal } from '@/app/components/PriceChartModal';
+import { FuturesCurvePanel } from '@/app/components/FuturesCurvePanel';
 import { COMMODITIES } from '@/app/lib/commodities';
+import type { PriceData } from '@/app/lib/commodities';
 import Link from 'next/link';
 
 type MainTab = 'energy' | 'metals' | 'agriculture' | 'correlations' | 'heatmap';
@@ -33,6 +37,13 @@ function getCategorySymbols(tab: MainTab): string[] {
   return [];
 }
 
+function getCategoryFilter(tab: MainTab): string | undefined {
+  if (tab === 'energy') return 'energy';
+  if (tab === 'metals') return 'metals';
+  if (tab === 'agriculture') return 'agriculture';
+  return undefined;
+}
+
 function NotAvailablePanel({ title, message }: { title: string; message: string }) {
   return (
     <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-8 text-center">
@@ -51,6 +62,7 @@ export default function Dashboard() {
   const { data, loading, lastUpdate } = useCommodityData(3000);
   const [mainTab, setMainTab] = useState<MainTab>('energy');
   const [subTab, setSubTab] = useState<SubTab>('prices');
+  const [selectedPrice, setSelectedPrice] = useState<PriceData | null>(null);
 
   const categoryPrices = useMemo(() => {
     if (!data?.prices) return [];
@@ -68,6 +80,14 @@ export default function Dashboard() {
     return groups;
   }, [categoryPrices]);
 
+  const handlePriceCardClick = useCallback((price: PriceData) => {
+    setSelectedPrice(price);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedPrice(null);
+  }, []);
+
   if (loading && !data) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0b0e14]">
@@ -84,6 +104,11 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0b0e14]">
+      {/* Price Chart Modal */}
+      {selectedPrice && (
+        <PriceChartModal price={selectedPrice} onClose={handleCloseModal} />
+      )}
+
       {/* Delay Banner */}
       <div className="bg-amber-500/10 border-b border-amber-500/20">
         <div className="max-w-[1600px] mx-auto px-4 py-1.5 flex items-center justify-center gap-2">
@@ -212,7 +237,7 @@ export default function Dashboard() {
                       <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">{group}</h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {prices.map(p => (
-                          <PriceCard key={p.symbol} price={p} />
+                          <PriceCard key={p.symbol} price={p} onClick={() => handlePriceCardClick(p)} />
                         ))}
                       </div>
                     </div>
@@ -232,7 +257,7 @@ export default function Dashboard() {
                   {categoryPrices.length > 0 && (
                     <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
                       <h3 className="text-sm font-medium text-slate-300 mb-3">Detailed Quotes</h3>
-                      <PriceTable prices={categoryPrices} />
+                      <PriceTable prices={categoryPrices} onRowClick={handlePriceCardClick} />
                     </div>
                   )}
                 </>
@@ -242,32 +267,57 @@ export default function Dashboard() {
 
           {/* Commodity Tab - Futures */}
           {isCommodityTab && subTab === 'futures' && (
-            <NotAvailablePanel
-              title="Futures Data - Not Available"
-              message="Real futures curve data is not available. This section previously displayed simulated futures contracts. A licensed commercial data feed (e.g., CME Group, ICE) would be required to provide real futures curve data."
+            <FuturesCurvePanel
+              symbols={getCategorySymbols(mainTab).map(sym => {
+                const c = COMMODITIES.find(x => x.symbol === sym);
+                return { symbol: sym, name: c?.name || sym, decimals: c?.decimals || 2 };
+              })}
             />
           )}
 
           {/* Commodity Tab - News & Macro */}
           {isCommodityTab && subTab === 'news' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <NotAvailablePanel
-                title="News Feed - Not Available"
-                message="Real-time commodity news is not available. A licensed news feed (e.g., Reuters, Bloomberg) would be required to provide real headlines."
-              />
-              <NotAvailablePanel
-                title="Economic Calendar - Not Available"
-                message="Real economic calendar data is not available. A licensed data provider would be required to show actual upcoming events, forecasts, and results."
-              />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data?.news && data.news.length > 0 ? (
+                  <NewsPanel news={data.news} filter={getCategoryFilter(mainTab)} />
+                ) : (
+                  <NotAvailablePanel
+                    title="News Feed - Loading"
+                    message="Commodity news is being fetched from Yahoo Finance. If no news appears, the news API may be temporarily unavailable."
+                  />
+                )}
+                {data?.macro && data.macro.length > 0 ? (
+                  <MacroIndicatorsPanel indicators={data.macro} />
+                ) : (
+                  <NotAvailablePanel
+                    title="Macro Indicators - Loading"
+                    message="Macro economic indicators are being fetched from Yahoo Finance. If no data appears, the API may be temporarily unavailable."
+                  />
+                )}
+              </div>
+              {data?.calendar && data.calendar.length > 0 && (
+                <UpcomingEventsPanel events={data.calendar} filter={getCategoryFilter(mainTab)} />
+              )}
             </div>
           )}
 
           {/* Correlations Tab */}
           {mainTab === 'correlations' && (
-            <NotAvailablePanel
-              title="Correlation Matrix - Not Available"
-              message="Real correlation data is not available. Computing accurate correlations requires historical tick-level data from a licensed market data provider. This section previously displayed estimated correlation values."
-            />
+            <>
+              {data?.correlations ? (
+                <CorrelationMatrix
+                  symbols={data.correlations.symbols}
+                  names={data.correlations.names}
+                  matrix={data.correlations.matrix}
+                />
+              ) : (
+                <NotAvailablePanel
+                  title="Correlation Matrix - Loading"
+                  message="Correlation data is being computed from historical Yahoo Finance price data. If the matrix does not appear, price data may be temporarily unavailable."
+                />
+              )}
+            </>
           )}
 
           {/* Heatmap Tab */}
@@ -284,7 +334,7 @@ export default function Dashboard() {
                   <MiniHeatmap prices={data.prices} />
                   <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-slate-300 mb-3">All Commodities</h3>
-                    <PriceTable prices={data.prices} />
+                    <PriceTable prices={data.prices} onRowClick={handlePriceCardClick} />
                   </div>
                 </>
               )}

@@ -84,6 +84,7 @@ export interface NewsItem {
   category: string;
   impact: 'high' | 'medium' | 'low';
   symbols: string[];
+  link?: string;
 }
 
 export interface MacroEvent {
@@ -95,6 +96,36 @@ export interface MacroEvent {
   previous: string;
   impact: 'high' | 'medium' | 'low';
   category: string;
+}
+
+export interface UpcomingDataEvent {
+  date: string;
+  time: string;
+  event: string;
+  source: string;
+  impact: 'high' | 'medium' | 'low';
+  category: 'energy' | 'metals' | 'agriculture' | 'macro' | 'all';
+  symbols: string[];
+}
+
+export interface HistoricalBar {
+  timestamp: number;
+  close: number;
+}
+
+export interface CorrelationData {
+  symbols: string[];
+  names: string[];
+  matrix: number[][];
+}
+
+export interface MacroIndicator {
+  symbol: string;
+  name: string;
+  value: number;
+  change: number;
+  changePercent: number;
+  category: 'currency' | 'rates' | 'equity' | 'volatility' | 'crypto';
 }
 
 /**

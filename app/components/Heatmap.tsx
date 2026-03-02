@@ -85,14 +85,14 @@ export function Heatmap({ prices }: { prices: PriceData[] }) {
 
 export function MiniHeatmap({ prices }: { prices: PriceData[] }) {
   const sorted = [...prices].sort((a, b) => b.changePercent - a.changePercent);
-  const gainers = sorted.slice(0, 5);
-  const losers = sorted.slice(-5).reverse();
+  const gainers = sorted.filter(p => p.changePercent > 0).slice(0, 5);
+  const losers = sorted.filter(p => p.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent).slice(0, 5);
 
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
         <h4 className="text-xs font-medium text-emerald-400 mb-2">Top Gainers</h4>
-        {gainers.map((p) => (
+        {gainers.length > 0 ? gainers.map((p) => (
           <div key={p.symbol} className="flex items-center justify-between py-1 border-b border-slate-800/30 last:border-0">
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-slate-300">{p.symbol}</span>
@@ -100,11 +100,13 @@ export function MiniHeatmap({ prices }: { prices: PriceData[] }) {
             </div>
             <span className="font-mono text-xs text-emerald-400 font-semibold">+{p.changePercent.toFixed(2)}%</span>
           </div>
-        ))}
+        )) : (
+          <p className="text-xs text-slate-500 py-2">No positive movers</p>
+        )}
       </div>
       <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
         <h4 className="text-xs font-medium text-red-400 mb-2">Top Losers</h4>
-        {losers.map((p) => (
+        {losers.length > 0 ? losers.map((p) => (
           <div key={p.symbol} className="flex items-center justify-between py-1 border-b border-slate-800/30 last:border-0">
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-slate-300">{p.symbol}</span>
@@ -112,7 +114,9 @@ export function MiniHeatmap({ prices }: { prices: PriceData[] }) {
             </div>
             <span className="font-mono text-xs text-red-400 font-semibold">{p.changePercent.toFixed(2)}%</span>
           </div>
-        ))}
+        )) : (
+          <p className="text-xs text-slate-500 py-2">No negative movers</p>
+        )}
       </div>
     </div>
   );

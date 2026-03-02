@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { computeSpreads } from '@/app/lib/commodities';
-import { fetchRealPrices } from '@/app/lib/fetchRealData';
+import { fetchRealPrices, computeCorrelationMatrix, fetchCommodityNews, getChartHistory, getMonthlyChartHistory, getYearlyChartHistory, fetchFuturesCurve, fetchMacroIndicators, getUpcomingDataEvents } from '@/app/lib/fetchRealData';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,36 +28,79 @@ export async function GET(request: Request) {
     case 'prices':
       return NextResponse.json({ prices: priceList, dataSource, timestamp: new Date().toISOString() });
 
-    case 'futures':
-      // Futures curves are not available — no real futures data source
-      return NextResponse.json({ symbol: searchParams.get('symbol') || 'CL', curve: null, dataSource, timestamp: new Date().toISOString() });
+    case 'futures': {
+      const futSymbol = searchParams.get('symbol') || 'CL';
+      const curve = await fetchFuturesCurve(futSymbol);
+      return NextResponse.json({ symbol: futSymbol, curve, dataSource, timestamp: new Date().toISOString() });
+    }
 
     case 'spreads':
       return NextResponse.json({ spreads: computeSpreads(priceList), dataSource, timestamp: new Date().toISOString() });
 
-    case 'news':
-      // No real news feed available
-      return NextResponse.json({ news: null, timestamp: new Date().toISOString() });
+    case 'news': {
+      const news = await fetchCommodityNews();
+      return NextResponse.json({ news: news.length > 0 ? news : null, timestamp: new Date().toISOString() });
+    }
 
-    case 'calendar':
-      // No real calendar data available
-      return NextResponse.json({ events: null, timestamp: new Date().toISOString() });
+    case 'calendar': {
+      const events = getUpcomingDataEvents();
+      return NextResponse.json({ events: events.length > 0 ? events : null, timestamp: new Date().toISOString() });
+    }
 
-    case 'correlations':
-      // No real correlation data available
-      return NextResponse.json({ correlations: null, timestamp: new Date().toISOString() });
+    case 'correlations': {
+      const correlations = computeCorrelationMatrix();
+      return NextResponse.json({ correlations, timestamp: new Date().toISOString() });
+    }
+
+    case 'chart': {
+      const symbol = searchParams.get('symbol') || 'CL';
+      const range = searchParams.get('range') || '5d';
+      let history: Awaited<ReturnType<typeof getChartHistory>> = null;
+
+      if (range === '1y') {
+        history = await getYearlyChartHistory(symbol);
+      } else if (range === '1mo') {
+        history = await getMonthlyChartHistory(symbol);
+      } else {
+        history = getChartHistory(symbol);
+      }
+
+      const commodity = priceList.find(p => p.symbol === symbol);
+      return NextResponse.json({
+        symbol,
+        range,
+        history,
+        price: commodity || null,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    case 'macro': {
+      const indicators = await fetchMacroIndicators();
+      return NextResponse.json({ indicators, timestamp: new Date().toISOString() });
+    }
 
     case 'all':
-    default:
+    default: {
+      const [correlations, news, macroIndicators] = await Promise.all([
+        Promise.resolve(computeCorrelationMatrix()),
+        fetchCommodityNews(),
+        fetchMacroIndicators(),
+      ]);
+
+      const upcomingEvents = getUpcomingDataEvents();
+
       return NextResponse.json({
         prices: priceList,
         futures: null,
         spreads: computeSpreads(priceList),
-        news: null,
-        calendar: null,
-        correlations: null,
+        news: news.length > 0 ? news : null,
+        calendar: upcomingEvents.length > 0 ? upcomingEvents : null,
+        correlations,
+        macro: macroIndicators.length > 0 ? macroIndicators : null,
         dataSource,
         timestamp: new Date().toISOString(),
       });
+    }
   }
 }

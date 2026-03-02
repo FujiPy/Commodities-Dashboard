@@ -60,7 +60,7 @@ export function PriceCard({ price, onClick, selected }: { price: PriceData; onCl
   );
 }
 
-export function PriceTable({ prices }: { prices: PriceData[] }) {
+export function PriceTable({ prices, onRowClick }: { prices: PriceData[]; onRowClick?: (price: PriceData) => void }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -84,7 +84,7 @@ export function PriceTable({ prices }: { prices: PriceData[] }) {
             const isPos = p.change >= 0;
             const color = isPos ? 'text-emerald-400' : 'text-red-400';
             return (
-              <tr key={p.symbol} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+              <tr key={p.symbol} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(p)}>
                 <td className="py-2 px-2 font-mono text-xs text-slate-300">{p.symbol}</td>
                 <td className="py-2 px-2 text-slate-200">{p.name}</td>
                 <td className="py-2 px-2 text-right font-mono font-semibold text-white">
