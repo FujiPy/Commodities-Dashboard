@@ -96,11 +96,11 @@ export function PriceTable({ prices }: { prices: PriceData[] }) {
                 <td className={`py-2 px-2 text-right font-mono ${color}`}>
                   {isPos ? '+' : ''}{p.changePercent.toFixed(2)}%
                 </td>
-                <td className="py-2 px-2 text-right font-mono text-slate-300">
-                  {p.bid.toLocaleString(undefined, { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals })}
+                <td className="py-2 px-2 text-right font-mono text-slate-500">
+                  {p.bid != null ? p.bid.toLocaleString(undefined, { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals }) : 'N/A'}
                 </td>
-                <td className="py-2 px-2 text-right font-mono text-slate-300">
-                  {p.ask.toLocaleString(undefined, { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals })}
+                <td className="py-2 px-2 text-right font-mono text-slate-500">
+                  {p.ask != null ? p.ask.toLocaleString(undefined, { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals }) : 'N/A'}
                 </td>
                 <td className="py-2 px-2 text-right font-mono text-slate-400">
                   {p.high.toLocaleString(undefined, { minimumFractionDigits: p.decimals, maximumFractionDigits: p.decimals })}
