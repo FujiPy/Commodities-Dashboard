@@ -71,12 +71,12 @@ export default function InfoPage() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">~15 min delay</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">60s price cache</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">2min macro cache</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">5min futures cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">15min price cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">15min macro cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">15min futures cache</span>
                   <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">5-day news cache</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">10min yearly chart cache</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">3s client polling</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">15min chart cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">15min client polling</span>
                 </div>
               </div>
             </div>
@@ -153,7 +153,7 @@ export default function InfoPage() {
                 Clicking any commodity opens a detailed chart modal with three time ranges: 5-day (15-minute interval
                 bars), 1-month (daily bars), and 1-year (weekly bars). All ranges use real historical price data from
                 Yahoo Finance. The chart color reflects whether the commodity has gained (green) or declined (red) over
-                the period. Yearly data is cached for 10 minutes.
+                the period. Yearly data is cached for 15 minutes.
               </p>
             </div>
             <div>
@@ -178,7 +178,7 @@ export default function InfoPage() {
                 Each commodity&apos;s individual contract months (e.g., CLF26, CLG26, etc.) are queried to build
                 the term structure. The curve indicates whether a commodity is in contango (far months priced higher)
                 or backwardation (near months priced higher). Open interest data is not available from the free API.
-                Futures data is cached for 5 minutes.
+                Futures data is cached for 15 minutes.
               </p>
             </div>
             <div>
@@ -206,7 +206,7 @@ export default function InfoPage() {
                 These include the US Dollar Index (DXY), Treasury yields (5-year, 10-year, 30-year), equity indices
                 (S&amp;P 500, Dow Jones), the CBOE Volatility Index (VIX), major currency pairs (EUR/USD, GBP/USD,
                 USD/JPY), Bitcoin, and the Gold ETF (GLD). Each indicator shows its current value, absolute change,
-                and percentage change. Macro data is cached for 2 minutes.
+                and percentage change. Macro data is cached for 15 minutes.
               </p>
             </div>
             <div>
@@ -249,7 +249,7 @@ export default function InfoPage() {
                 <span className="text-xs text-emerald-400 font-medium">LIVE</span>
               </div>
               <span className="text-sm text-slate-400">
-                Fresh data from Yahoo Finance (fetched within the last 60 seconds). Still subject to ~15 min exchange delay.
+                Fresh data from Yahoo Finance (fetched within the last 15 minutes). Still subject to ~15 min exchange delay.
               </span>
             </div>
             <div className="flex items-center gap-3">

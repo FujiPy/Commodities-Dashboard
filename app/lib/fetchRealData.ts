@@ -47,19 +47,19 @@ interface ChartData {
 
 // In-memory cache
 let priceCache: { data: Map<string, ChartData>; timestamp: number } | null = null;
-const CACHE_TTL = 60_000; // 60 seconds
+const CACHE_TTL = 900_000; // 15 minutes
 
 // Monthly chart cache (1mo range, separate)
 let monthlyCache: { data: Map<string, HistoricalBar[]>; timestamp: number } | null = null;
-const MONTHLY_CACHE_TTL = 300_000; // 5 minutes
+const MONTHLY_CACHE_TTL = 900_000; // 15 minutes
 
 // Yearly chart cache (1y range, separate)
 let yearlyCache: { data: Map<string, HistoricalBar[]>; timestamp: number } | null = null;
-const YEARLY_CACHE_TTL = 600_000; // 10 minutes
+const YEARLY_CACHE_TTL = 900_000; // 15 minutes
 
 // Futures data cache
 let futuresCache: { data: Map<string, FuturesContract[]>; timestamp: number } | null = null;
-const FUTURES_CACHE_TTL = 300_000; // 5 minutes
+const FUTURES_CACHE_TTL = 900_000; // 15 minutes
 
 // News cache (separate, longer TTL for article persistence)
 let newsCache: { data: NewsItem[]; timestamp: number } | null = null;
@@ -76,7 +76,7 @@ export interface MacroIndicator {
 }
 
 let macroCache: { data: MacroIndicator[]; timestamp: number } | null = null;
-const MACRO_CACHE_TTL = 120_000; // 2 minutes
+const MACRO_CACHE_TTL = 900_000; // 15 minutes
 
 // Yahoo Finance symbols for key macro indicators
 const MACRO_SYMBOLS: { yahoo: string; name: string; category: MacroIndicator['category'] }[] = [

@@ -89,7 +89,7 @@ export function WorldMarketClock() {
       );
     }
     update();
-    const interval = setInterval(update, 10_000);
+    const interval = setInterval(update, 60_000); // 1 minute
     return () => clearInterval(interval);
   }, []);
 

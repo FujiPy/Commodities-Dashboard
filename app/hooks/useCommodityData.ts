@@ -16,7 +16,7 @@ export interface CommodityData {
   timestamp: string;
 }
 
-export function useCommodityData(refreshInterval = 3000) {
+export function useCommodityData(refreshInterval = 900_000) { // 15 minutes
   const [data, setData] = useState<CommodityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
