@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCommodityData } from '@/app/hooks/useCommodityData';
 import { PriceCard, PriceTable } from '@/app/components/PriceCard';
 import { SpreadsPanel, NewsPanel, MacroIndicatorsPanel, UpcomingEventsPanel } from '@/app/components/Panels';
@@ -59,10 +59,16 @@ function NotAvailablePanel({ title, message }: { title: string; message: string 
 }
 
 export default function Dashboard() {
-  const { data, loading, lastUpdate } = useCommodityData(3000);
+  const { data, loading, lastUpdate } = useCommodityData();
   const [mainTab, setMainTab] = useState<MainTab>('energy');
   const [subTab, setSubTab] = useState<SubTab>('prices');
   const [selectedPrice, setSelectedPrice] = useState<PriceData | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const categoryPrices = useMemo(() => {
     if (!data?.prices) return [];
@@ -148,7 +154,7 @@ export default function Dashboard() {
               {data?.prices && data.prices.length > 0 && <MiniSummary prices={data.prices} />}
               {lastUpdate && (
                 <span className="text-xs text-slate-500 font-mono">
-                  Updated: {lastUpdate.toLocaleTimeString()}
+                  Last update: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} | Now: {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               )}
               <Link
