@@ -91,20 +91,20 @@ export function MacroCalendar({ events, filter }: { events: MacroEvent[]; filter
 }
 
 export function SpreadsPanel({ spreads }: { spreads: SpreadData[] }) {
+  if (!spreads || spreads.length === 0) return null;
   return (
     <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
       <h3 className="text-sm font-medium text-slate-300 mb-3">Key Spreads</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {spreads.map((s) => {
-          const isPos = s.change >= 0;
           return (
             <div key={s.name} className="bg-slate-900/40 border border-slate-700/30 rounded-lg p-3">
               <div className="text-xs text-slate-400 mb-1">{s.name}</div>
               <div className="flex items-end justify-between">
                 <span className="text-lg font-mono font-bold text-white">{s.value.toFixed(2)}</span>
                 <div className="text-right">
-                  <span className={`text-sm font-mono ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {isPos ? '+' : ''}{s.change.toFixed(2)}
+                  <span className="text-xs font-mono text-slate-500">
+                    Chg: N/A
                   </span>
                 </div>
               </div>

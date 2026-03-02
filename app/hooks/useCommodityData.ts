@@ -2,15 +2,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PriceData, FuturesContract, SpreadData, NewsItem, MacroEvent } from '@/app/lib/commodities';
 
-export type DataSource = 'live' | 'cached' | 'simulated';
+export type DataSource = 'live' | 'cached' | 'unavailable';
 
 export interface CommodityData {
   prices: PriceData[];
-  futures: Record<string, FuturesContract[]>;
+  futures: Record<string, FuturesContract[]> | null;
   spreads: SpreadData[];
-  news: NewsItem[];
-  calendar: MacroEvent[];
-  correlations: { symbols: string[]; names: string[]; matrix: number[][] };
+  news: NewsItem[] | null;
+  calendar: MacroEvent[] | null;
+  correlations: { symbols: string[]; names: string[]; matrix: number[][] } | null;
   dataSource?: DataSource;
   timestamp: string;
 }

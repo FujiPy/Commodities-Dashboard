@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server';
-import {
-  generateAllPrices,
-  generateFuturesCurve,
-  generateSpreads,
-  generateNews,
-  generateMacroCalendar,
-  getCorrelationMatrix,
-  COMMODITIES,
-} from '@/app/lib/commodities';
-import { fetchRealPrices, getCachedSpotPrice } from '@/app/lib/fetchRealData';
+import { computeSpreads } from '@/app/lib/commodities';
+import { fetchRealPrices } from '@/app/lib/fetchRealData';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,78 +8,56 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'all';
 
-  const timeSeed = Math.floor(Date.now() / 2000);
-
-  // Try to get real prices, fall back to simulation
-  let prices;
-  let dataSource: 'live' | 'cached' | 'simulated' = 'simulated';
+  // Fetch real prices from Yahoo Finance only — no simulation fallback
+  let prices: Awaited<ReturnType<typeof fetchRealPrices>> = null;
+  let dataSource: 'live' | 'cached' | 'unavailable' = 'unavailable';
 
   try {
     const realResult = await fetchRealPrices();
     if (realResult && realResult.prices.length > 0) {
-      // Merge real prices with simulated for any missing symbols
-      const realPriceMap = new Map(realResult.prices.map(p => [p.symbol, p]));
-      const simulatedPrices = generateAllPrices(timeSeed);
-      const simulatedMap = new Map(simulatedPrices.map(p => [p.symbol, p]));
-
-      // Use real data where available, simulated for the rest
-      prices = COMMODITIES.map(c => {
-        return realPriceMap.get(c.symbol) || simulatedMap.get(c.symbol)!;
-      });
-
+      prices = realResult;
       dataSource = realResult.source;
-    } else {
-      prices = generateAllPrices(timeSeed);
     }
   } catch {
-    prices = generateAllPrices(timeSeed);
+    // Real data unavailable
   }
+
+  const priceList = prices?.prices ?? [];
 
   switch (type) {
     case 'prices':
-      return NextResponse.json({ prices, dataSource, timestamp: new Date().toISOString() });
+      return NextResponse.json({ prices: priceList, dataSource, timestamp: new Date().toISOString() });
 
-    case 'futures': {
-      const symbol = searchParams.get('symbol') || 'CL';
-      const commodity = COMMODITIES.find(c => c.symbol === symbol);
-      if (!commodity) {
-        return NextResponse.json({ error: 'Unknown symbol' }, { status: 400 });
-      }
-      // Use real spot price as base for futures curve if available
-      const realSpot = getCachedSpotPrice(symbol);
-      const curve = generateFuturesCurve(commodity, timeSeed, realSpot);
-      return NextResponse.json({ symbol, curve, dataSource, timestamp: new Date().toISOString() });
-    }
+    case 'futures':
+      // Futures curves are not available — no real futures data source
+      return NextResponse.json({ symbol: searchParams.get('symbol') || 'CL', curve: null, dataSource, timestamp: new Date().toISOString() });
 
     case 'spreads':
-      return NextResponse.json({ spreads: generateSpreads(prices, timeSeed), dataSource, timestamp: new Date().toISOString() });
+      return NextResponse.json({ spreads: computeSpreads(priceList), dataSource, timestamp: new Date().toISOString() });
 
     case 'news':
-      return NextResponse.json({ news: generateNews(), timestamp: new Date().toISOString() });
+      // No real news feed available
+      return NextResponse.json({ news: null, timestamp: new Date().toISOString() });
 
     case 'calendar':
-      return NextResponse.json({ events: generateMacroCalendar(), timestamp: new Date().toISOString() });
+      // No real calendar data available
+      return NextResponse.json({ events: null, timestamp: new Date().toISOString() });
 
     case 'correlations':
-      return NextResponse.json({ ...getCorrelationMatrix(timeSeed), timestamp: new Date().toISOString() });
+      // No real correlation data available
+      return NextResponse.json({ correlations: null, timestamp: new Date().toISOString() });
 
     case 'all':
-    default: {
-      const allFutures: Record<string, ReturnType<typeof generateFuturesCurve>> = {};
-      for (const c of COMMODITIES) {
-        const realSpot = getCachedSpotPrice(c.symbol);
-        allFutures[c.symbol] = generateFuturesCurve(c, timeSeed, realSpot);
-      }
+    default:
       return NextResponse.json({
-        prices,
-        futures: allFutures,
-        spreads: generateSpreads(prices, timeSeed),
-        news: generateNews(),
-        calendar: generateMacroCalendar(),
-        correlations: getCorrelationMatrix(timeSeed),
+        prices: priceList,
+        futures: null,
+        spreads: computeSpreads(priceList),
+        news: null,
+        calendar: null,
+        correlations: null,
         dataSource,
         timestamp: new Date().toISOString(),
       });
-    }
   }
 }
