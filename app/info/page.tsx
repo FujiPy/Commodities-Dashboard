@@ -61,13 +61,21 @@ export default function InfoPage() {
               <div>
                 <h3 className="text-sm font-medium text-slate-200">Yahoo Finance API</h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Spot prices, open/high/low/close data, volume, and historical sparklines are sourced from
-                  the Yahoo Finance chart API. Data is fetched for front-month futures contracts (e.g., CL=F for
-                  WTI Crude Oil) with 15-minute interval bars over a 5-day range.
+                  All market data is sourced from Yahoo Finance. Spot prices use front-month futures contracts
+                  (e.g., CL=F for WTI Crude Oil) with 15-minute interval bars over a 5-day range. Futures
+                  forward curves are built by querying individual contract months (e.g., CLF26.NYM, CLG26.NYM).
+                  Chart history is available in three ranges: 5-day (15-min bars), 1-month (daily bars), and
+                  1-year (weekly bars). Macro economic indicators (DXY, Treasury yields, VIX, equity indices,
+                  currencies) are also fetched from Yahoo Finance. News headlines include both commodity and
+                  macro economic topics.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">~15 min delay</span>
-                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">60s server cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">60s price cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">2min macro cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">5min futures cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">5-day news cache</span>
+                  <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">10min yearly chart cache</span>
                   <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">3s client polling</span>
                 </div>
               </div>
@@ -140,6 +148,15 @@ export default function InfoPage() {
               </p>
             </div>
             <div>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">Price Charts (5-Day, 1-Month &amp; 1-Year)</h3>
+              <p>
+                Clicking any commodity opens a detailed chart modal with three time ranges: 5-day (15-minute interval
+                bars), 1-month (daily bars), and 1-year (weekly bars). All ranges use real historical price data from
+                Yahoo Finance. The chart color reflects whether the commodity has gained (green) or declined (red) over
+                the period. Yearly data is cached for 10 minutes.
+              </p>
+            </div>
+            <div>
               <h3 className="text-sm font-medium text-slate-200 mb-1">Bid / Ask</h3>
               <p>
                 Bid and ask prices are shown as &quot;N/A&quot; because the Yahoo Finance API does not provide
@@ -157,22 +174,66 @@ export default function InfoPage() {
             <div>
               <h3 className="text-sm font-medium text-slate-200 mb-1">Futures Curves</h3>
               <p>
-                Futures curve data is not available. Displaying real forward curves requires individual contract
-                month data from a licensed commercial data feed (e.g., CME Group, ICE).
+                Futures forward curves display real prices for upcoming contract months fetched from Yahoo Finance.
+                Each commodity&apos;s individual contract months (e.g., CLF26, CLG26, etc.) are queried to build
+                the term structure. The curve indicates whether a commodity is in contango (far months priced higher)
+                or backwardation (near months priced higher). Open interest data is not available from the free API.
+                Futures data is cached for 5 minutes.
               </p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-slate-200 mb-1">Correlation Matrix</h3>
               <p>
-                Correlation data is not available. Computing accurate cross-commodity correlations requires
-                historical tick-level or daily close data from a licensed market data provider.
+                The correlation matrix is computed from real historical price data. Log returns are calculated from
+                5 days of 15-minute close prices for all tracked commodities, and Pearson correlation coefficients
+                are computed between every pair. The matrix updates whenever fresh price data is fetched.
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-slate-200 mb-1">News & Economic Calendar</h3>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">News Feed</h3>
               <p>
-                Real-time news and economic calendar data are not available. These features would require
-                a licensed news feed (e.g., Reuters, Bloomberg) and economic data provider.
+                Commodity news headlines are sourced from Yahoo Finance&apos;s search API across multiple query topics
+                (energy, metals, agriculture, general commodities, macroeconomic). Headlines are categorized by sector,
+                tagged with impact level (high/medium/low) based on keyword analysis, and include direct links to the
+                original article when available. News data is cached for 5 days to ensure article persistence and
+                reduce API calls.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">Live Macro Indicators</h3>
+              <p>
+                The News &amp; Macro sub-tab displays live macro economic indicators sourced from Yahoo Finance.
+                These include the US Dollar Index (DXY), Treasury yields (5-year, 10-year, 30-year), equity indices
+                (S&amp;P 500, Dow Jones), the CBOE Volatility Index (VIX), major currency pairs (EUR/USD, GBP/USD,
+                USD/JPY), Bitcoin, and the Gold ETF (GLD). Each indicator shows its current value, absolute change,
+                and percentage change. Macro data is cached for 2 minutes.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">Macro News</h3>
+              <p>
+                In addition to commodity-specific news, the news feed also includes macroeconomic headlines related
+                to Federal Reserve policy, inflation data, GDP reports, trade and tariff developments, and central
+                bank announcements. These headlines are tagged with a &quot;MACRO&quot; badge and appear alongside
+                commodity-specific news in all category tabs.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">Upcoming Data Events</h3>
+              <p>
+                The News &amp; Macro sub-tab includes a &quot;Upcoming Data Events&quot; panel that displays scheduled
+                commodity and macro data releases for the next 14 days. These are generated from a curated list of
+                recurring scheduled events relevant to commodity markets. Events include:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-slate-400">
+                <li><strong className="text-slate-300">Energy:</strong> EIA Weekly Natural Gas Storage Report, EIA Weekly Petroleum Status Report, API Weekly Crude Oil Stock Report, Baker Hughes Rig Count</li>
+                <li><strong className="text-slate-300">Agriculture:</strong> USDA WASDE Report, USDA Crop Production Report, USDA Weekly Export Sales, USDA Weekly Crop Progress, ICO World Coffee Market Report</li>
+                <li><strong className="text-slate-300">Cross-commodity:</strong> CFTC Commitments of Traders (COT) Report</li>
+                <li><strong className="text-slate-300">Macro:</strong> FOMC Interest Rate Decision, US CPI, US PPI, US Non-Farm Payrolls, US GDP Report, ISM Manufacturing PMI</li>
+              </ul>
+              <p className="mt-2">
+                Events are filtered by the active commodity category tab and include their scheduled release time,
+                source agency, impact level, and related commodity symbols.
               </p>
             </div>
           </div>
