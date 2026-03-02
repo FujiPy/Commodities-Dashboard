@@ -127,11 +127,14 @@ function generateSparkline(base: number, volatility: number, timeSeed: number): 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_CODES = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
 
-export function generateFuturesCurve(commodity: CommodityDef, timeSeed: number): FuturesContract[] {
+export function generateFuturesCurve(commodity: CommodityDef, timeSeed: number, realSpotPrice?: number | null): FuturesContract[] {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   const contracts: FuturesContract[] = [];
+
+  // Use real spot price if available, otherwise fall back to hardcoded base
+  const spotPrice = realSpotPrice ?? commodity.basePrice;
 
   // Determine curve shape: energy tends to backwardation, metals contango, ags seasonal
   let curveSlope = 0;
@@ -149,15 +152,15 @@ export function generateFuturesCurve(commodity: CommodityDef, timeSeed: number):
     const monthIdx = (currentMonth + i + 1) % 12;
     const year = currentYear + Math.floor((currentMonth + i + 1) / 12);
     const r = seededRandom(timeSeed * 50 + i * 13.7);
-    const baseMove = curveSlope * (i + 1) * commodity.basePrice;
-    const noise = (r - 0.5) * commodity.volatility * commodity.basePrice * 0.5;
-    const price = commodity.basePrice + baseMove + noise;
+    const baseMove = curveSlope * (i + 1) * spotPrice;
+    const noise = (r - 0.5) * commodity.volatility * spotPrice * 0.5;
+    const price = spotPrice + baseMove + noise;
 
     contracts.push({
       month: `${MONTHS[monthIdx]} ${year.toString().slice(2)}`,
       code: `${commodity.symbol}${MONTH_CODES[monthIdx]}${year.toString().slice(2)}`,
       price: Number(price.toFixed(commodity.decimals)),
-      change: Number(((r - 0.5) * commodity.volatility * commodity.basePrice * 0.8).toFixed(commodity.decimals)),
+      change: Number(((r - 0.5) * commodity.volatility * spotPrice * 0.8).toFixed(commodity.decimals)),
       volume: Math.floor(5000 + seededRandom(timeSeed + i * 3.1) * 80000),
       openInterest: Math.floor(20000 + seededRandom(timeSeed + i * 5.7) * 200000),
     });
@@ -298,41 +301,81 @@ export function getCorrelationMatrix(timeSeed: number): { symbols: string[]; nam
 }
 
 export function generateNews(): NewsItem[] {
-  return [
-    { id: '1', headline: 'OPEC+ Maintains Production Cuts Through Q2, Signaling Supply Discipline', source: 'Reuters', time: '2 min ago', category: 'energy', impact: 'high', symbols: ['CL', 'CO'] },
-    { id: '2', headline: 'US Crude Inventories Fall by 4.2M Barrels, Exceeding Expectations', source: 'EIA', time: '15 min ago', category: 'energy', impact: 'high', symbols: ['CL'] },
-    { id: '3', headline: 'China Manufacturing PMI Rises to 51.2, Boosting Industrial Metals', source: 'Bloomberg', time: '28 min ago', category: 'metals', impact: 'high', symbols: ['HG', 'AL', 'NI'] },
-    { id: '4', headline: 'Gold Holds Near Record as Fed Signals Patience on Rate Cuts', source: 'CNBC', time: '35 min ago', category: 'metals', impact: 'medium', symbols: ['GC', 'SI'] },
-    { id: '5', headline: 'USDA Reports Lower-Than-Expected Corn Planting Intentions', source: 'USDA', time: '42 min ago', category: 'agriculture', impact: 'high', symbols: ['ZC', 'ZW'] },
-    { id: '6', headline: 'Brazil Coffee Harvest Outlook Cut Due to Drought Conditions', source: 'Reuters', time: '1 hr ago', category: 'agriculture', impact: 'medium', symbols: ['KC'] },
-    { id: '7', headline: 'LME Copper Stocks Fall to Lowest Level Since 2005', source: 'LME', time: '1 hr ago', category: 'metals', impact: 'medium', symbols: ['HG'] },
-    { id: '8', headline: 'Natural Gas Prices Surge on Extended Cold Weather Forecast', source: 'AccuWeather', time: '1.5 hr ago', category: 'energy', impact: 'medium', symbols: ['NG'] },
-    { id: '9', headline: 'India Lifts Wheat Export Ban, Pressuring Global Prices', source: 'Bloomberg', time: '2 hr ago', category: 'agriculture', impact: 'high', symbols: ['ZW'] },
-    { id: '10', headline: 'Cocoa Prices Hit New Record as West African Supply Dwindles', source: 'FT', time: '2 hr ago', category: 'agriculture', impact: 'high', symbols: ['CC'] },
-    { id: '11', headline: 'Palladium Demand Drops as EV Adoption Accelerates', source: 'Reuters', time: '3 hr ago', category: 'metals', impact: 'medium', symbols: ['PA'] },
-    { id: '12', headline: 'US Gasoline Demand Rises Ahead of Summer Driving Season', source: 'EIA', time: '3 hr ago', category: 'energy', impact: 'low', symbols: ['RB'] },
-    { id: '13', headline: 'Argentina Soybean Crop Estimate Raised to 50M Tonnes', source: 'USDA', time: '4 hr ago', category: 'agriculture', impact: 'medium', symbols: ['ZS', 'ZM', 'ZL'] },
-    { id: '14', headline: 'Sugar Futures Fall on Improved Indian Monsoon Forecast', source: 'Reuters', time: '4 hr ago', category: 'agriculture', impact: 'low', symbols: ['SB'] },
-    { id: '15', headline: 'Nickel Squeeze Fears Resurface as LME Inventories Decline', source: 'Bloomberg', time: '5 hr ago', category: 'metals', impact: 'medium', symbols: ['NI'] },
+  // Sample headlines — rotated based on the current hour to add variety
+  const allHeadlines: Omit<NewsItem, 'id' | 'time'>[] = [
+    { headline: 'OPEC+ Discusses Production Targets Ahead of Upcoming Meeting', source: 'Reuters', category: 'energy', impact: 'high', symbols: ['CL', 'CO'] },
+    { headline: 'US Crude Inventories Report Due This Week — Analysts Expect Draw', source: 'EIA', category: 'energy', impact: 'high', symbols: ['CL'] },
+    { headline: 'China PMI Data Signals Steady Manufacturing Activity', source: 'Bloomberg', category: 'metals', impact: 'high', symbols: ['HG', 'AL', 'NI'] },
+    { headline: 'Gold Steadies as Markets Weigh Central Bank Policy Outlook', source: 'CNBC', category: 'metals', impact: 'medium', symbols: ['GC', 'SI'] },
+    { headline: 'USDA Crop Progress Report Shows Mixed Planting Conditions', source: 'USDA', category: 'agriculture', impact: 'high', symbols: ['ZC', 'ZW'] },
+    { headline: 'Brazil Weather Concerns Continue to Support Coffee Futures', source: 'Reuters', category: 'agriculture', impact: 'medium', symbols: ['KC'] },
+    { headline: 'Copper Inventories at Major Exchanges Remain Tight', source: 'LME', category: 'metals', impact: 'medium', symbols: ['HG'] },
+    { headline: 'Natural Gas Storage Levels Tracked Ahead of Weekly Report', source: 'EIA', category: 'energy', impact: 'medium', symbols: ['NG'] },
+    { headline: 'Wheat Markets Respond to Global Export Flow Updates', source: 'Bloomberg', category: 'agriculture', impact: 'high', symbols: ['ZW'] },
+    { headline: 'Cocoa Supply Chain Constraints Persist in West Africa', source: 'FT', category: 'agriculture', impact: 'high', symbols: ['CC'] },
+    { headline: 'Palladium Faces Headwinds from EV Adoption Trends', source: 'Reuters', category: 'metals', impact: 'medium', symbols: ['PA'] },
+    { headline: 'Gasoline Demand Tracking Seasonal Patterns', source: 'EIA', category: 'energy', impact: 'low', symbols: ['RB'] },
+    { headline: 'South American Soybean Harvest Progress Monitored', source: 'USDA', category: 'agriculture', impact: 'medium', symbols: ['ZS', 'ZM', 'ZL'] },
+    { headline: 'Sugar Markets Weigh Global Production Estimates', source: 'Reuters', category: 'agriculture', impact: 'low', symbols: ['SB'] },
+    { headline: 'Nickel Inventories Show Continued Decline at LME Warehouses', source: 'Bloomberg', category: 'metals', impact: 'medium', symbols: ['NI'] },
+    { headline: 'Brent-WTI Spread Widens on Atlantic Basin Supply Dynamics', source: 'Reuters', category: 'energy', impact: 'medium', symbols: ['CL', 'CO'] },
+    { headline: 'Silver ETF Holdings Reach Multi-Month Highs', source: 'Bloomberg', category: 'metals', impact: 'low', symbols: ['SI'] },
+    { headline: 'Cotton Futures React to Weekly Export Sales Data', source: 'USDA', category: 'agriculture', impact: 'low', symbols: ['CT'] },
+    { headline: 'Heating Oil Demand Adjusts as Seasonal Patterns Shift', source: 'EIA', category: 'energy', impact: 'low', symbols: ['HO'] },
+    { headline: 'Aluminum Premiums Firm on Tight Spot Market Conditions', source: 'LME', category: 'metals', impact: 'medium', symbols: ['AL'] },
   ];
+
+  // Rotate headlines based on current hour to add variety
+  const hourSeed = Math.floor(Date.now() / 3600000);
+  const offset = hourSeed % allHeadlines.length;
+  const rotated = [...allHeadlines.slice(offset), ...allHeadlines.slice(0, offset)];
+  const selected = rotated.slice(0, 15);
+
+  // Generate relative timestamps
+  const timeLabels = [
+    '2 min ago', '8 min ago', '15 min ago', '22 min ago', '35 min ago',
+    '48 min ago', '1 hr ago', '1 hr ago', '2 hr ago', '2 hr ago',
+    '3 hr ago', '3 hr ago', '4 hr ago', '5 hr ago', '6 hr ago',
+  ];
+
+  return selected.map((item, i) => ({
+    ...item,
+    id: String(i + 1),
+    time: timeLabels[i],
+  }));
 }
 
 export function generateMacroCalendar(): MacroEvent[] {
-  return [
-    { date: 'Mar 3', time: '10:30 ET', event: 'EIA Weekly Petroleum Status', actual: '-', forecast: '-2.1M', previous: '-4.2M', impact: 'high', category: 'energy' },
-    { date: 'Mar 3', time: '10:30 ET', event: 'EIA Natural Gas Storage', actual: '-', forecast: '-80 Bcf', previous: '-92 Bcf', impact: 'high', category: 'energy' },
-    { date: 'Mar 4', time: '08:30 ET', event: 'US Non-Farm Payrolls', actual: '-', forecast: '185K', previous: '216K', impact: 'high', category: 'macro' },
-    { date: 'Mar 5', time: 'All Day', event: 'OPEC+ JMMC Meeting', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
-    { date: 'Mar 5', time: '15:30 ET', event: 'CFTC Commitments of Traders', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'all' },
-    { date: 'Mar 7', time: '12:00 ET', event: 'USDA WASDE Report', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'agriculture' },
-    { date: 'Mar 7', time: '10:00 ET', event: 'ISM Manufacturing PMI', actual: '-', forecast: '49.8', previous: '49.2', impact: 'medium', category: 'macro' },
-    { date: 'Mar 10', time: '08:30 ET', event: 'US CPI (YoY)', actual: '-', forecast: '2.9%', previous: '3.1%', impact: 'high', category: 'macro' },
-    { date: 'Mar 10', time: '16:00 ET', event: 'API Weekly Crude Stock', actual: '-', forecast: '-1.5M', previous: '-3.2M', impact: 'medium', category: 'energy' },
-    { date: 'Mar 12', time: '10:30 ET', event: 'EIA Weekly Petroleum Status', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
-    { date: 'Mar 14', time: '14:00 ET', event: 'FOMC Rate Decision', actual: '-', forecast: '5.25%', previous: '5.25%', impact: 'high', category: 'macro' },
-    { date: 'Mar 17', time: 'All Day', event: 'LME Week Asia', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'metals' },
-    { date: 'Mar 20', time: '15:30 ET', event: 'CFTC Commitments of Traders', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'all' },
-    { date: 'Mar 24', time: '12:00 ET', event: 'USDA Prospective Plantings', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'agriculture' },
-    { date: 'Mar 28', time: '10:00 ET', event: 'EIA Monthly Energy Review', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'energy' },
+  // Generate a dynamic calendar based on the current date
+  const now = new Date();
+  const currentDay = now.getDate();
+  const currentMonth = now.getMonth();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function dateStr(daysFromNow: number): string {
+    const d = new Date(now);
+    d.setDate(currentDay + daysFromNow);
+    return `${monthNames[d.getMonth()]} ${d.getDate()}`;
+  }
+
+  // Recurring economic events anchored relative to current date
+  const events: MacroEvent[] = [
+    { date: dateStr(1), time: '10:30 ET', event: 'EIA Weekly Petroleum Status', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
+    { date: dateStr(1), time: '10:30 ET', event: 'EIA Natural Gas Storage', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
+    { date: dateStr(2), time: '08:30 ET', event: 'US Non-Farm Payrolls', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'macro' },
+    { date: dateStr(3), time: 'All Day', event: 'OPEC+ JMMC Meeting', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
+    { date: dateStr(3), time: '15:30 ET', event: 'CFTC Commitments of Traders', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'all' },
+    { date: dateStr(5), time: '12:00 ET', event: 'USDA WASDE Report', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'agriculture' },
+    { date: dateStr(5), time: '10:00 ET', event: 'ISM Manufacturing PMI', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'macro' },
+    { date: dateStr(8), time: '08:30 ET', event: 'US CPI (YoY)', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'macro' },
+    { date: dateStr(8), time: '16:00 ET', event: 'API Weekly Crude Stock', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'energy' },
+    { date: dateStr(10), time: '10:30 ET', event: 'EIA Weekly Petroleum Status', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'energy' },
+    { date: dateStr(12), time: '14:00 ET', event: 'FOMC Rate Decision', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'macro' },
+    { date: dateStr(15), time: 'All Day', event: 'LME Week', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'metals' },
+    { date: dateStr(18), time: '15:30 ET', event: 'CFTC Commitments of Traders', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'all' },
+    { date: dateStr(22), time: '12:00 ET', event: 'USDA Prospective Plantings', actual: '-', forecast: '-', previous: '-', impact: 'high', category: 'agriculture' },
+    { date: dateStr(26), time: '10:00 ET', event: 'EIA Monthly Energy Review', actual: '-', forecast: '-', previous: '-', impact: 'medium', category: 'energy' },
   ];
+
+  return events;
 }

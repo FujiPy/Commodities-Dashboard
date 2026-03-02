@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { PriceData, FuturesContract, SpreadData, NewsItem, MacroEvent } from '@/app/lib/commodities';
 
+export type DataSource = 'live' | 'cached' | 'simulated';
+
 export interface CommodityData {
   prices: PriceData[];
   futures: Record<string, FuturesContract[]>;
@@ -9,6 +11,7 @@ export interface CommodityData {
   news: NewsItem[];
   calendar: MacroEvent[];
   correlations: { symbols: string[]; names: string[]; matrix: number[][] };
+  dataSource?: DataSource;
   timestamp: string;
 }
 
