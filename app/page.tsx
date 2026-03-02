@@ -99,8 +99,17 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-bold text-white tracking-tight">Commodities Dashboard</h1>
               <div className="flex items-center gap-1.5 ml-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 live-pulse"></span>
-                <span className="text-xs text-emerald-400 font-medium">LIVE</span>
+                {data?.dataSource === 'live' || data?.dataSource === 'cached' ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 live-pulse"></span>
+                    <span className="text-xs text-emerald-400 font-medium">LIVE</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    <span className="text-xs text-yellow-400 font-medium">DELAYED</span>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-4">
