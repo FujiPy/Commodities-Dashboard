@@ -28,7 +28,12 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TabButton({ label, value, activeTab, setActiveTab }: any) {
+function TabButton({ label, value, activeTab, setActiveTab }: { 
+  label: string; 
+  value: string; 
+  activeTab: string; 
+  setActiveTab: (value: string) => void 
+}) {
   return (
     <button
       onClick={() => setActiveTab(value)}
