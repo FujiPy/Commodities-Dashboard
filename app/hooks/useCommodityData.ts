@@ -1,21 +1,22 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { PriceData, FuturesContract, SpreadData, NewsItem, MacroEvent } from '@/app/lib/commodities';
+import type { PriceData, FuturesContract, SpreadData, NewsItem, UpcomingDataEvent, MacroIndicator } from '@/app/lib/commodities';
 
-export type DataSource = 'live' | 'cached' | 'simulated';
+export type DataSource = 'live' | 'cached' | 'unavailable';
 
 export interface CommodityData {
   prices: PriceData[];
-  futures: Record<string, FuturesContract[]>;
+  futures: Record<string, FuturesContract[]> | null;
   spreads: SpreadData[];
-  news: NewsItem[];
-  calendar: MacroEvent[];
-  correlations: { symbols: string[]; names: string[]; matrix: number[][] };
+  news: NewsItem[] | null;
+  calendar: UpcomingDataEvent[] | null;
+  correlations: { symbols: string[]; names: string[]; matrix: number[][] } | null;
+  macro: MacroIndicator[] | null;
   dataSource?: DataSource;
   timestamp: string;
 }
 
-export function useCommodityData(refreshInterval = 3000) {
+export function useCommodityData(refreshInterval = 900_000) { // 15 minutes
   const [data, setData] = useState<CommodityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

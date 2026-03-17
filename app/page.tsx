@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCommodityData } from '@/app/hooks/useCommodityData';
 import { PriceCard, PriceTable } from '@/app/components/PriceCard';
-import { ForwardCurveChart, FuturesTable, VolumeChart } from '@/app/components/Charts';
-import { CorrelationMatrix } from '@/app/components/CorrelationMatrix';
+import { SpreadsPanel, NewsPanel, MacroIndicatorsPanel, UpcomingEventsPanel } from '@/app/components/Panels';
+import { WorldMarketClock } from '@/app/components/WorldMarketClock';
 import { Heatmap, MiniHeatmap } from '@/app/components/Heatmap';
-import { NewsPanel, MacroCalendar, SpreadsPanel } from '@/app/components/Panels';
+import { CorrelationMatrix } from '@/app/components/CorrelationMatrix';
+import { PriceChartModal } from '@/app/components/PriceChartModal';
+import { FuturesCurvePanel } from '@/app/components/FuturesCurvePanel';
 import { COMMODITIES } from '@/app/lib/commodities';
+import type { PriceData } from '@/app/lib/commodities';
+import Link from 'next/link';
 
 type MainTab = 'energy' | 'metals' | 'agriculture' | 'correlations' | 'heatmap';
 type SubTab = 'prices' | 'futures' | 'news';
@@ -33,25 +37,38 @@ function getCategorySymbols(tab: MainTab): string[] {
   return [];
 }
 
-function getNewsFilter(tab: MainTab): string | undefined {
+function getCategoryFilter(tab: MainTab): string | undefined {
   if (tab === 'energy') return 'energy';
   if (tab === 'metals') return 'metals';
   if (tab === 'agriculture') return 'agriculture';
   return undefined;
 }
 
-function getCalendarFilter(tab: MainTab): string | undefined {
-  if (tab === 'energy') return 'energy';
-  if (tab === 'metals') return 'metals';
-  if (tab === 'agriculture') return 'agriculture';
-  return undefined;
+function NotAvailablePanel({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-8 text-center">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 mb-4">
+        <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      </div>
+      <h3 className="text-sm font-medium text-slate-300 mb-2">{title}</h3>
+      <p className="text-xs text-slate-500 max-w-md mx-auto">{message}</p>
+    </div>
+  );
 }
 
 export default function Dashboard() {
-  const { data, loading, lastUpdate } = useCommodityData(3000);
+  const { data, loading, lastUpdate } = useCommodityData();
   const [mainTab, setMainTab] = useState<MainTab>('energy');
   const [subTab, setSubTab] = useState<SubTab>('prices');
-  const [selectedFutures, setSelectedFutures] = useState<string>('CL');
+  const [selectedPrice, setSelectedPrice] = useState<PriceData | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const categoryPrices = useMemo(() => {
     if (!data?.prices) return [];
@@ -69,13 +86,13 @@ export default function Dashboard() {
     return groups;
   }, [categoryPrices]);
 
-  // Update selected futures when tab changes
-  React.useEffect(() => {
-    const symbols = getCategorySymbols(mainTab);
-    if (symbols.length > 0 && !symbols.includes(selectedFutures)) {
-      setSelectedFutures(symbols[0]);
-    }
-  }, [mainTab, selectedFutures]);
+  const handlePriceCardClick = useCallback((price: PriceData) => {
+    setSelectedPrice(price);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedPrice(null);
+  }, []);
 
   if (loading && !data) {
     return (
@@ -89,9 +106,30 @@ export default function Dashboard() {
   }
 
   const isCommodityTab = mainTab === 'energy' || mainTab === 'metals' || mainTab === 'agriculture';
+  const hasNoPrices = !data?.prices || data.prices.length === 0;
 
   return (
     <div className="min-h-screen bg-[#0b0e14]">
+      {/* Price Chart Modal */}
+      {selectedPrice && (
+        <PriceChartModal price={selectedPrice} onClose={handleCloseModal} />
+      )}
+
+      {/* Delay Banner */}
+      <div className="bg-amber-500/10 border-b border-amber-500/20">
+        <div className="max-w-[1600px] mx-auto px-4 py-1.5 flex items-center justify-center gap-2">
+          <svg className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+          </svg>
+          <span className="text-xs text-amber-300/90">
+            Market data is delayed by approximately 15 minutes.{' '}
+            <Link href="/info" className="underline underline-offset-2 hover:text-amber-200 transition-colors">
+              View data sources
+            </Link>
+          </span>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="border-b border-slate-800 bg-[#0d1019]/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 py-3">
@@ -107,18 +145,27 @@ export default function Dashboard() {
                 ) : (
                   <>
                     <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                    <span className="text-xs text-yellow-400 font-medium">DELAYED</span>
+                    <span className="text-xs text-yellow-400 font-medium">UNAVAILABLE</span>
                   </>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {data?.prices && <MiniSummary prices={data.prices} />}
+              {data?.prices && data.prices.length > 0 && <MiniSummary prices={data.prices} />}
               {lastUpdate && (
                 <span className="text-xs text-slate-500 font-mono">
-                  Updated: {lastUpdate.toLocaleTimeString()}
+                  Last update: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} | Now: {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               )}
+              <Link
+                href="/info"
+                className="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Info
+              </Link>
             </div>
           </div>
         </div>
@@ -171,157 +218,132 @@ export default function Dashboard() {
 
       {/* Content */}
       <main className="max-w-[1600px] mx-auto px-4 py-4">
+        {/* World Market Clock */}
+        <div className="mb-4">
+          <WorldMarketClock />
+        </div>
+
         <div className="tab-content-enter">
           {/* Commodity Tab - Spot Prices */}
           {isCommodityTab && subTab === 'prices' && data && (
             <div className="space-y-6">
-              {/* Quick Summary */}
-              <MiniHeatmap prices={categoryPrices} />
+              {hasNoPrices ? (
+                <NotAvailablePanel
+                  title="Not Available"
+                  message="Real-time price data is currently unavailable. Prices are sourced from Yahoo Finance and require an active market data connection."
+                />
+              ) : (
+                <>
+                  {/* Quick Summary */}
+                  {categoryPrices.length > 0 && <MiniHeatmap prices={categoryPrices} />}
 
-              {/* Price Cards by subcategory */}
-              {Array.from(categoryGroups.entries()).map(([group, prices]) => (
-                <div key={group}>
-                  <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">{group}</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {prices.map(p => (
-                      <PriceCard key={p.symbol} price={p} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                  {/* Price Cards by subcategory */}
+                  {Array.from(categoryGroups.entries()).map(([group, prices]) => (
+                    <div key={group}>
+                      <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">{group}</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {prices.map(p => (
+                          <PriceCard key={p.symbol} price={p} onClick={() => handlePriceCardClick(p)} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
 
-              {/* Spreads */}
-              <SpreadsPanel spreads={data.spreads.filter(s => {
-                if (mainTab === 'energy') return ['Brent-WTI Spread', 'Gasoline Crack', 'Heating Oil Crack', 'WTI M1-M2', 'Brent M1-M2'].includes(s.name);
-                if (mainTab === 'metals') return ['Gold/Silver Ratio'].includes(s.name);
-                if (mainTab === 'agriculture') return ['Soybean Crush'].includes(s.name);
-                return false;
-              })} />
+                  {/* Spreads */}
+                  {data.spreads && data.spreads.length > 0 && (
+                    <SpreadsPanel spreads={data.spreads.filter(s => {
+                      if (mainTab === 'energy') return ['Brent-WTI Spread', 'Gasoline Crack', 'Heating Oil Crack'].includes(s.name);
+                      if (mainTab === 'metals') return ['Gold/Silver Ratio'].includes(s.name);
+                      if (mainTab === 'agriculture') return ['Soybean Crush'].includes(s.name);
+                      return false;
+                    })} />
+                  )}
 
-              {/* Full Price Table */}
-              <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Detailed Quotes</h3>
-                <PriceTable prices={categoryPrices} />
-              </div>
+                  {/* Full Price Table */}
+                  {categoryPrices.length > 0 && (
+                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
+                      <h3 className="text-sm font-medium text-slate-300 mb-3">Detailed Quotes</h3>
+                      <PriceTable prices={categoryPrices} onRowClick={handlePriceCardClick} />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
           {/* Commodity Tab - Futures */}
-          {isCommodityTab && subTab === 'futures' && data && (
-            <div className="space-y-4">
-              {/* Futures Selector */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-slate-400">Select contract:</span>
-                {getCategorySymbols(mainTab).map(sym => {
-                  const c = COMMODITIES.find(x => x.symbol === sym);
-                  return (
-                    <button
-                      key={sym}
-                      onClick={() => setSelectedFutures(sym)}
-                      className={`px-3 py-1.5 text-xs rounded-md font-mono transition-all ${
-                        selectedFutures === sym
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                      }`}
-                    >
-                      {sym} <span className="text-slate-300 font-sans ml-1">{c?.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Forward Curve Chart */}
-              {data.futures[selectedFutures] && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ForwardCurveChart
-                    data={data.futures[selectedFutures]}
-                    symbol={selectedFutures}
-                    decimals={COMMODITIES.find(c => c.symbol === selectedFutures)?.decimals ?? 2}
-                  />
-                  <VolumeChart data={data.futures[selectedFutures]} />
-                </div>
-              )}
-
-              {/* Futures Table */}
-              {data.futures[selectedFutures] && (
-                <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-slate-300 mb-3">
-                    {selectedFutures} Futures Contracts
-                  </h3>
-                  <FuturesTable
-                    data={data.futures[selectedFutures]}
-                    decimals={COMMODITIES.find(c => c.symbol === selectedFutures)?.decimals ?? 2}
-                  />
-                </div>
-              )}
-
-              {/* All Forward Curves for category */}
-              <div>
-                <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">All Forward Curves</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {getCategorySymbols(mainTab).map(sym => (
-                    data.futures[sym] && (
-                      <ForwardCurveChart
-                        key={sym}
-                        data={data.futures[sym]}
-                        symbol={sym}
-                        decimals={COMMODITIES.find(c => c.symbol === sym)?.decimals ?? 2}
-                      />
-                    )
-                  ))}
-                </div>
-              </div>
-            </div>
+          {isCommodityTab && subTab === 'futures' && (
+            <FuturesCurvePanel
+              symbols={getCategorySymbols(mainTab).map(sym => {
+                const c = COMMODITIES.find(x => x.symbol === sym);
+                return { symbol: sym, name: c?.name || sym, decimals: c?.decimals || 2 };
+              })}
+            />
           )}
 
           {/* Commodity Tab - News & Macro */}
-          {isCommodityTab && subTab === 'news' && data && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <NewsPanel news={data.news} filter={getNewsFilter(mainTab)} />
-              <MacroCalendar events={data.calendar} filter={getCalendarFilter(mainTab)} />
+          {isCommodityTab && subTab === 'news' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data?.news && data.news.length > 0 ? (
+                  <NewsPanel news={data.news} filter={getCategoryFilter(mainTab)} />
+                ) : (
+                  <NotAvailablePanel
+                    title="News Feed - Loading"
+                    message="Commodity news is being fetched from Yahoo Finance. If no news appears, the news API may be temporarily unavailable."
+                  />
+                )}
+                {data?.macro && data.macro.length > 0 ? (
+                  <MacroIndicatorsPanel indicators={data.macro} />
+                ) : (
+                  <NotAvailablePanel
+                    title="Macro Indicators - Loading"
+                    message="Macro economic indicators are being fetched from Yahoo Finance. If no data appears, the API may be temporarily unavailable."
+                  />
+                )}
+              </div>
+              {data?.calendar && data.calendar.length > 0 && (
+                <UpcomingEventsPanel events={data.calendar} filter={getCategoryFilter(mainTab)} />
+              )}
             </div>
           )}
 
           {/* Correlations Tab */}
-          {mainTab === 'correlations' && data?.correlations && (
-            <div className="space-y-4">
-              <CorrelationMatrix
-                symbols={data.correlations.symbols}
-                names={data.correlations.names}
-                matrix={data.correlations.matrix}
-              />
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">Strongest Positive Correlations</h4>
-                  <TopCorrelations matrix={data.correlations.matrix} symbols={data.correlations.symbols} names={data.correlations.names} type="positive" />
-                </div>
-                <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">Weakest / Negative Correlations</h4>
-                  <TopCorrelations matrix={data.correlations.matrix} symbols={data.correlations.symbols} names={data.correlations.names} type="negative" />
-                </div>
-                <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">About</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    The correlation matrix shows the statistical relationship between commodity price movements.
-                    Values range from -1 (perfectly inversely correlated) to +1 (perfectly correlated).
-                    Strong correlations ({'>'}0.7) suggest commodities move together, while weak or negative correlations
-                    indicate diversification potential. Energy commodities tend to be highly correlated with each other,
-                    while agriculture shows more independence.
-                  </p>
-                </div>
-              </div>
-            </div>
+          {mainTab === 'correlations' && (
+            <>
+              {data?.correlations ? (
+                <CorrelationMatrix
+                  symbols={data.correlations.symbols}
+                  names={data.correlations.names}
+                  matrix={data.correlations.matrix}
+                />
+              ) : (
+                <NotAvailablePanel
+                  title="Correlation Matrix - Loading"
+                  message="Correlation data is being computed from historical Yahoo Finance price data. If the matrix does not appear, price data may be temporarily unavailable."
+                />
+              )}
+            </>
           )}
 
           {/* Heatmap Tab */}
-          {mainTab === 'heatmap' && data?.prices && (
+          {mainTab === 'heatmap' && data && (
             <div className="space-y-4">
-              <Heatmap prices={data.prices} />
-              <MiniHeatmap prices={data.prices} />
-              <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">All Commodities</h3>
-                <PriceTable prices={data.prices} />
-              </div>
+              {hasNoPrices ? (
+                <NotAvailablePanel
+                  title="Not Available"
+                  message="Real-time price data is currently unavailable. The heatmap requires live price data from Yahoo Finance."
+                />
+              ) : (
+                <>
+                  <Heatmap prices={data.prices} />
+                  <MiniHeatmap prices={data.prices} />
+                  <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-slate-300 mb-3">All Commodities</h3>
+                    <PriceTable prices={data.prices} onRowClick={handlePriceCardClick} />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -353,45 +375,6 @@ function MiniSummary({ prices }: { prices: { symbol: string; price: number; chan
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function TopCorrelations({
-  matrix, symbols, names, type,
-}: { matrix: number[][]; symbols: string[]; names: string[]; type: 'positive' | 'negative' }) {
-  const pairs: { s1: string; n1: string; s2: string; n2: string; corr: number }[] = [];
-  for (let i = 0; i < symbols.length; i++) {
-    for (let j = i + 1; j < symbols.length; j++) {
-      pairs.push({ s1: symbols[i], n1: names[i], s2: symbols[j], n2: names[j], corr: matrix[i][j] });
-    }
-  }
-  const sorted = type === 'positive'
-    ? pairs.sort((a, b) => b.corr - a.corr).slice(0, 10)
-    : pairs.sort((a, b) => a.corr - b.corr).slice(0, 10);
-
-  return (
-    <div className="space-y-1.5">
-      {sorted.map((p, i) => (
-        <div key={i} className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-slate-300">{p.s1}</span>
-            <span className="text-slate-600">/</span>
-            <span className="font-mono text-slate-300">{p.s2}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${p.corr >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                style={{ width: `${Math.abs(p.corr) * 100}%` }}
-              ></div>
-            </div>
-            <span className={`font-mono w-12 text-right ${p.corr >= 0.5 ? 'text-emerald-400' : p.corr >= 0 ? 'text-slate-400' : 'text-red-400'}`}>
-              {p.corr.toFixed(3)}
-            </span>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
